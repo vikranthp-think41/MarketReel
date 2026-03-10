@@ -5,7 +5,7 @@ import secrets
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
-from app import agent
+from agents.marketlogic import agent
 from app.core.config import get_settings
 
 app = FastAPI(title="MarketLogic ADK", version="1.0.0")

@@ -39,7 +39,11 @@ Full-stack scaffold with FastAPI + React + PostgreSQL + Google ADK. Three servic
 │   │   ├── agent.py             # ADK root agent
 │   │   ├── core/                # Config
 │   │   └── main.py              # ADK FastAPI app
-│   ├── agents/                  # Agent docs/eval/sample agent
+│   ├── agents/                  # Agent assets + docs
+│   │   ├── marketlogic/          # MarketLogic agent sample (mirrors runtime agent)
+│   │   ├── docs/                 # Agent docs
+│   │   ├── eval/                 # Evaluation harness
+│   │   └── tests/                # Agent-specific tests
 │   ├── tests/                   # ADK server tests
 │   └── pyproject.toml
 └── client/                      # React frontend
@@ -164,10 +168,10 @@ docker build -t app-scaffold .
 
 ## Google ADK Agent
 
-A sample agent is provided at `adk-server/app/agent.py`. It uses the `google-adk` SDK with Gemini models.
+A sample agent is provided at `adk-server/agents/marketlogic/agent.py`. It uses the `google-adk` SDK with Gemini models.
 
 To customize:
-1. Edit `adk-server/app/agent.py` — define tools and the `root_agent`
+1. Edit `adk-server/agents/marketlogic/agent.py` — define tools and the `root_agent`
 2. Set `GOOGLE_API_KEY` in the root `.env`
 3. Run via service: `cd adk-server && uv run uvicorn app.main:app --reload --port 8011`
 4. Or call via backend: `POST /api/v1/agent/run` with `{"message": "Hello"}`

@@ -1,6 +1,6 @@
-"""MarketLogic ADK agent sample.
+"""MarketLogic ADK agent.
 
-This mirrors the runtime agent used by the ADK server.
+Used by the ADK server at /v1/run.
 """
 
 from __future__ import annotations
