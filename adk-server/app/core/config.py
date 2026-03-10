@@ -4,19 +4,21 @@ from functools import lru_cache
 
 from pathlib import Path
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 
+load_dotenv(ROOT_DIR / ".env")
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ROOT_DIR / ".env", extra="ignore")
-
     env: str = "development"
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5433/app_scaffold"
     google_api_key: str = ""
     google_genai_use_vertexai: bool = False
     app_name: str = "marketlogic_adk"
+    adk_model: str = "gemini-2.5-flash"
 
 
 @lru_cache

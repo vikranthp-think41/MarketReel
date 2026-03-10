@@ -165,8 +165,8 @@ function ChatPage() {
               <Box
                 padding={2}
                 borderRadius={2}
-                bgcolor={message.role === "user" ? "primary.main" : "grey.200"}
-                color={message.role === "user" ? "primary.contrastText" : "text.primary"}
+                bgcolor={message.role === "user" ? "primary.main" : "grey.900"}
+                color={message.role === "user" ? "primary.contrastText" : "grey.100"}
               >
                 <Typography variant="body1">{message.content}</Typography>
               </Box>

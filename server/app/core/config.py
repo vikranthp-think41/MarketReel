@@ -4,15 +4,16 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
 
 SERVER_DIR = Path(__file__).resolve().parents[2]
 ROOT_DIR = SERVER_DIR.parent
 
+load_dotenv(ROOT_DIR / ".env")
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ROOT_DIR / ".env", extra="ignore")
-
     env: Literal["development", "test", "production"] = "development"
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5433/app_scaffold"
     secret_key: str = "app-scaffold-dev-secret"

@@ -26,7 +26,7 @@ def summarize_film(title: str, logline: str) -> dict[str, str]:
 
 root_agent = Agent(
     name="marketlogic_agent",
-    model="gemini-2.0-flash",
+    model=settings.adk_model,
     description="Assists film distribution executives with acquisition and release strategy.",
     instruction=(
         "You are MarketLogic AI. Help evaluate indie films for global acquisition and "
@@ -47,7 +47,36 @@ def _get_runner() -> tuple[DatabaseSessionService, Runner]:
     return _session_service, _runner
 
 
+def _get_session_service() -> DatabaseSessionService:
+    global _session_service
+    if _session_service is None:
+        _session_service = DatabaseSessionService(settings.database_url)
+    return _session_service
+
+
 async def run_agent(message: str, user_id: str, session_id: str | None) -> tuple[str, str]:
+    # If no API key is configured, avoid calling the model runtime and return a safe stub.
+    if not settings.google_api_key and not settings.google_genai_use_vertexai:
+        session_service = _get_session_service()
+        session = None
+        if session_id:
+            session = await session_service.get_session(
+                app_name=settings.app_name,
+                user_id=user_id,
+                session_id=session_id,
+            )
+        if session is None:
+            session = await session_service.create_session(
+                app_name=settings.app_name,
+                user_id=user_id,
+                session_id=session_id,
+            )
+        return (
+            "MarketLogic AI is running without a Google API key. "
+            "Set GOOGLE_API_KEY to enable model responses.",
+            session.id,
+        )
+
     session_service, runner = _get_runner()
 
     session = None
