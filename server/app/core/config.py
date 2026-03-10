@@ -7,10 +7,11 @@ from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVER_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = SERVER_DIR.parent
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=SERVER_DIR / ".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ROOT_DIR / ".env", extra="ignore")
 
     env: Literal["development", "test", "production"] = "development"
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5433/app_scaffold"

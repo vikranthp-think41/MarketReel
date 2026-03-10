@@ -2,8 +2,10 @@ import axios from "axios";
 
 import type { Chat, ChatDetail, Message, User } from "../types";
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "/";
+
 const api = axios.create({
-  baseURL: "/",
+  baseURL: apiBaseUrl,
 });
 
 api.interceptors.request.use((config) => {
