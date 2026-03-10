@@ -8,7 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from app.api.router import root_router
+from app.core.config import get_settings
 from app.core.logging import setup_logging
+from app.db.seed import seed_users
 from app.db.session import get_sessionmaker
 from app.middleware.error_handler import ErrorHandlerMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware
@@ -17,6 +19,13 @@ from app.middleware.request_logging import RequestLoggingMiddleware
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     get_sessionmaker()
+    settings = get_settings()
+    if settings.env == "development":
+        sessionmaker = get_sessionmaker()
+        async with sessionmaker() as session:
+            created = await seed_users(session)
+        if created:
+            logger.info("Seeded {count} users", count=created)
     logger.info("Application started")
     yield
     logger.info("Application shutting down")

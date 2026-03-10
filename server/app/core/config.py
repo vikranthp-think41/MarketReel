@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     secret_key: str = "app-scaffold-dev-secret"
     google_api_key: str = ""
     google_genai_use_vertexai: bool = False
+    adk_base_url: str = "http://localhost:8011"
 
     @property
     def effective_db_url(self) -> str:
