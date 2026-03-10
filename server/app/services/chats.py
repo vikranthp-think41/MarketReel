@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,7 +49,7 @@ async def add_message_and_run(
     result = await run_adk(message=content, user_id=str(user_id), session_id=chat.adk_session_id)
     if chat.adk_session_id != result.session_id:
         chat.adk_session_id = result.session_id
-    chat.updated_at = datetime.now(UTC)
+    chat.updated_at = datetime.now()
 
     assistant_message = Message(chat_id=chat.id, role="assistant", content=result.reply)
     db.add(assistant_message)

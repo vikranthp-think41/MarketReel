@@ -18,7 +18,7 @@ class _FakeAdk:
 @pytest.mark.asyncio
 async def test_chat_flow(client: AsyncClient, auth_headers: dict[str, str], monkeypatch):
     fake = _FakeAdk()
-    monkeypatch.setattr(adk_client, "run_adk", fake)
+    monkeypatch.setattr("app.services.chats.run_adk", fake)
 
     create = await client.post("/api/v1/chats", json={"title": "Deal Room"}, headers=auth_headers)
     assert create.status_code == 200
@@ -47,4 +47,4 @@ async def test_chat_flow(client: AsyncClient, auth_headers: dict[str, str], monk
 @pytest.mark.asyncio
 async def test_chat_requires_auth(client: AsyncClient):
     response = await client.get("/api/v1/chats")
-    assert response.status_code == 403
+    assert response.status_code == 401

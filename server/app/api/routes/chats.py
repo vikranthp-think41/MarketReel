@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +26,7 @@ class MessageOut(BaseModel):
     id: int
     role: str
     content: str
-    created_at: str
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
@@ -33,8 +35,8 @@ class ChatOut(BaseModel):
     id: int
     title: str
     adk_session_id: str | None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
     model_config = {"from_attributes": True}
 
