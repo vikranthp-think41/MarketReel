@@ -162,6 +162,7 @@ def TargetedFetcher(plan: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
             "movie": str(plan.get("movie", "")),
             "territory": str(plan.get("territory", "")),
             "intent": str(plan.get("intent", "full_scorecard")),
+            "doc_types": [str(item) for item in plan.get("doc_types", [])],
             "max_docs": int(plan.get("max_docs", 10)),
             "max_scenes": int(plan.get("max_scenes", 6)),
         },
@@ -347,10 +348,14 @@ def format_scorecard(
     acquisition_price_usd: float,
     release_mode: str,
     release_window_days: int,
+    marketing_spend_usd: float,
+    platform_priority: list[str],
+    roi_scenarios: dict[str, float],
     risk_flags: list[dict[str, Any]],
     citations: list[Citation],
     confidence: float,
     warnings: list[str],
+    response_type: str,
 ) -> Scorecard:
     return {
         "projected_revenue_by_territory": {
@@ -362,9 +367,13 @@ def format_scorecard(
             "release_mode": release_mode,
             "theatrical_window_days": release_window_days,
         },
+        "marketing_spend_usd": round(marketing_spend_usd, 2),
+        "platform_priority": platform_priority,
+        "roi_scenarios": roi_scenarios,
         "citations": citations,
         "confidence": round(confidence, 3),
         "warnings": warnings,
+        "response_type": response_type,
     }
 
 

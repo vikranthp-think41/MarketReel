@@ -140,9 +140,9 @@ async def test_orchestrator_handles_small_talk_without_workflow() -> None:
         provider_enabled=False,
     )
 
-    assert isinstance(reply, str)
-    assert "movie and territory" in reply.lower()
-    assert state_delta["last_agent_response_type"] == "respond_directly"
+    assert reply["response_type"] == "conversation_response"
+    assert "movie and territory" in str(reply.get("message", "")).lower()
+    assert state_delta["last_agent_response_type"] == "conversation_response"
 
 
 @pytest.mark.asyncio
@@ -153,6 +153,6 @@ async def test_orchestrator_asks_for_missing_context_on_analytic_prompt() -> Non
         provider_enabled=False,
     )
 
-    assert isinstance(reply, str)
-    assert "movie title and target territory" in reply
-    assert state_delta["last_agent_response_type"] == "ask_clarification"
+    assert reply["response_type"] == "clarification_response"
+    assert "movie title and target territory" in str(reply.get("message", ""))
+    assert state_delta["last_agent_response_type"] == "clarification_response"

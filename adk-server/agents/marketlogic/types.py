@@ -3,8 +3,17 @@ from __future__ import annotations
 from typing import Any, Literal, TypedDict
 
 
-IntentType = Literal["valuation", "risk", "strategy", "full_scorecard", "small_talk"]
+TurnType = Literal[
+    "greeting",
+    "acknowledgement",
+    "help",
+    "clarification",
+    "workflow_request",
+    "workflow_followup",
+]
+WorkflowIntent = Literal["valuation", "risk", "strategy", "full_scorecard"]
 OrchestratorAction = Literal["respond_directly", "ask_clarification", "run_workflow"]
+ResponseType = Literal["conversation_response", "clarification_response", "scorecard_response"]
 RiskCategory = Literal["CENSORSHIP", "CULTURAL_SENSITIVITY", "MARKET"]
 RiskSeverity = Literal["LOW", "MEDIUM", "HIGH"]
 
@@ -13,16 +22,20 @@ class OrchestratorInput(TypedDict):
     message: str
     movie: str | None
     territory: str | None
-    intent: IntentType
+    turn_type: TurnType
+    workflow_intent: WorkflowIntent | None
     scenario_override: str | None
 
 
 class OrchestratorRoute(TypedDict):
     action: OrchestratorAction
-    intent: IntentType
+    turn_type: TurnType
+    workflow_intent: WorkflowIntent | None
     movie: str | None
     territory: str | None
     missing_fields: list[str]
+    required_stages: list[str]
+    response_type: ResponseType
     direct_response: str | None
 
 
@@ -36,7 +49,7 @@ class Citation(TypedDict):
 class EvidenceRequest(TypedDict):
     movie: str
     territory: str
-    intent: IntentType
+    intent: WorkflowIntent
     needs_docs: bool
     needs_db: bool
 
@@ -44,7 +57,7 @@ class EvidenceRequest(TypedDict):
 class EvidenceBundle(TypedDict):
     movie: str
     territory: str
-    intent: IntentType
+    intent: WorkflowIntent
     document_evidence: dict[str, list[dict[str, Any]]]
     db_evidence: dict[str, Any]
     citations: list[Citation]
@@ -90,6 +103,10 @@ class Scorecard(TypedDict):
     risk_flags: list[RiskFlag]
     recommended_acquisition_price: float
     release_timeline: dict[str, Any]
+    marketing_spend_usd: float
+    platform_priority: list[str]
+    roi_scenarios: dict[str, float]
     citations: list[Citation]
     confidence: float
     warnings: list[str]
+    response_type: ResponseType

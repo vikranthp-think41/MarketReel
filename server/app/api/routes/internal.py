@@ -52,6 +52,7 @@ class DocsSearchRequest(BaseModel):
     movie: str = Field(min_length=1, max_length=250)
     territory: str = Field(min_length=1, max_length=120)
     intent: str = Field(min_length=1, max_length=80)
+    doc_types: list[str] = Field(default_factory=list, max_length=20)
     max_docs: int = Field(default=10, ge=1, le=30)
     max_scenes: int = Field(default=6, ge=1, le=20)
 
@@ -225,6 +226,7 @@ async def docs_search(body: DocsSearchRequest) -> DocsSearchResponse:
         movie=body.movie,
         territory=body.territory,
         intent=body.intent,
+        doc_types=body.doc_types,
         max_docs=body.max_docs,
         max_scenes=body.max_scenes,
     )

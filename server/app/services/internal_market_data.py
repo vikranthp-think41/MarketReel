@@ -364,10 +364,13 @@ def docs_search(
     movie: str,
     territory: str,
     intent: str,
+    doc_types: list[str] | None = None,
     max_docs: int = 10,
     max_scenes: int = 6,
 ) -> dict[str, Any]:
     plan = build_retrieval_plan(movie=movie, territory=territory, intent=intent)
+    if doc_types:
+        plan["doc_types"] = sorted({str(item).strip() for item in doc_types if str(item).strip()})
     plan["max_docs"] = max_docs
     plan["max_scenes"] = max_scenes
     fetched = targeted_fetch(plan)

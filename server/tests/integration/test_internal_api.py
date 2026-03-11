@@ -145,6 +145,22 @@ async def test_internal_market_and_bundle_endpoints(client, seed_market_data) ->
     assert comparables.status_code == 200
     assert len(comparables.json()) >= 1
 
+    docs = await client.post(
+        "/internal/v1/docs/search",
+        json={
+            "movie": "Interstellar",
+            "territory": "India",
+            "intent": "risk",
+            "doc_types": ["reviews"],
+            "max_docs": 5,
+            "max_scenes": 2,
+        },
+        headers=headers,
+    )
+    assert docs.status_code == 200
+    for item in docs.json()["documents"]:
+        assert item.get("doc_type") == "reviews"
+
     bundle = await client.post(
         "/internal/v1/evidence/bundle",
         json={
@@ -160,4 +176,3 @@ async def test_internal_market_and_bundle_endpoints(client, seed_market_data) ->
     body = bundle.json()
     assert "box_office" in body["db_evidence"]
     assert isinstance(body["document_evidence"]["documents"], list)
-

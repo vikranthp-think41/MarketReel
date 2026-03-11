@@ -16,6 +16,24 @@ import { createChat, getChat, listChats, sendMessage } from "../lib/api";
 import type { Chat, Message } from "../types";
 import { useAuthStore } from "../store/auth";
 
+interface ParsedAssistantPayload {
+  response_type?: string;
+  message?: string;
+  [key: string]: unknown;
+}
+
+function parseAssistantPayload(content: string): ParsedAssistantPayload | null {
+  try {
+    const parsed = JSON.parse(content) as unknown;
+    if (parsed && typeof parsed === "object") {
+      return parsed as ParsedAssistantPayload;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function ChatPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
@@ -168,7 +186,28 @@ function ChatPage() {
                 bgcolor={message.role === "user" ? "primary.main" : "grey.900"}
                 color={message.role === "user" ? "primary.contrastText" : "grey.100"}
               >
-                <Typography variant="body1">{message.content}</Typography>
+                {message.role === "assistant" ? (
+                  (() => {
+                    const payload = parseAssistantPayload(message.content);
+                    if (!payload) {
+                      return <Typography variant="body1">{message.content}</Typography>;
+                    }
+                    if (payload.response_type === "scorecard_response") {
+                      return (
+                        <Typography
+                          variant="body2"
+                          component="pre"
+                          sx={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "monospace" }}
+                        >
+                          {JSON.stringify(payload, null, 2)}
+                        </Typography>
+                      );
+                    }
+                    return <Typography variant="body1">{String(payload.message ?? message.content)}</Typography>;
+                  })()
+                ) : (
+                  <Typography variant="body1">{message.content}</Typography>
+                )}
               </Box>
             </Box>
           ))}
