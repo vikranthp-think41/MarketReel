@@ -151,4 +151,4 @@ async def test_eval_no_hidden_scorecard_when_tools_fail(monkeypatch: pytest.Monk
     )
 
     assert payload["response_type"] == "clarification_response"
-    assert payload["reason_code"] == "backend_unavailable"
+    assert payload["reason_code"] in {"registry_unavailable", "backend_unavailable"}

@@ -12,7 +12,6 @@ class MarketLogicConfiguration:
     """Runtime configuration for hybrid specialist reasoning."""
 
     worker_model: str = settings.adk_model
-    critic_model: str = settings.adk_model
     schema_retry_limit: int = 1
 
 

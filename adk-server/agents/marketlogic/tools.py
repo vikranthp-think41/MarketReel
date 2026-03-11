@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from contextvars import ContextVar
-from functools import lru_cache
+
 from typing import Any
 from uuid import uuid4
 
@@ -240,16 +240,30 @@ async def _sleep(seconds: float) -> None:
     await asyncio.sleep(seconds)
 
 
-@lru_cache
+_registry_cache: dict[str, Any] | None = None
+
+
 def IndexRegistry() -> dict[str, Any]:
+    """Fetch known movies and territories from backend registry.
+
+    Caches the result on first successful fetch. Returns ``_unavailable=True``
+    when the backend is unreachable or returns no data — the result is NOT
+    cached in that case so the next request will retry.
+    """
+    global _registry_cache
+    if _registry_cache is not None:
+        return _registry_cache
     payload = _request_json_sync("GET", "/internal/v1/meta/registry")
-    if isinstance(payload, dict):
-        return payload
+    if isinstance(payload, dict) and payload.get("known_movies"):
+        _registry_cache = payload
+        return _registry_cache
+    logger.warning("index_registry_unavailable backend_not_reachable_or_returned_no_data")
     return {
         "page_index_manifest": {"documents": []},
         "scene_manifest": {"scripts": []},
         "known_movies": [],
         "known_territories": [],
+        "_unavailable": True,
     }
 
 

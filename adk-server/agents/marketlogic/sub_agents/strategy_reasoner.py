@@ -83,13 +83,17 @@ class StrategyReasoner:
         valuation: ValuationResult,
         risk_flags: list[RiskFlag],
     ) -> StrategyResult | None:
+        # Trim to only strategy-relevant data — exclude raw doc text
+        db = evidence.get("db_evidence", {})
         input_payload: dict[str, Any] = {
             "movie_id": evidence["movie"],
             "territory": evidence["territory"],
             "scenario_overrides": orchestrator_input.get("scenario_override"),
             "valuation_output": valuation,
             "risk_output": risk_flags,
-            "evidence_bundle": evidence,
+            "theatrical_window_trends": db.get("theatrical_windows", []),
+            "vod_price_benchmarks": db.get("vod_benchmarks", {}),
+            "exchange_rates": db.get("exchange_rates", {}),
         }
         raw = await run_prompt_json(
             prompt=STRATEGY_AGENT_PROMPT,

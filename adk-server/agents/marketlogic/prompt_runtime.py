@@ -22,7 +22,6 @@ def load_prompt(filename: str) -> str:
 
 ORCHESTRATOR_PROMPT = load_prompt("MarketLogicOrchestrator_prompt.txt")
 DATA_AGENT_PROMPT = load_prompt("DataAgent_prompt.txt")
-DOCUMENT_RETRIEVAL_PROMPT = load_prompt("DocumentRetrievalAgent_prompt.txt")
 VALUATION_AGENT_PROMPT = load_prompt("ValuationAgent_prompt.txt")
 RISK_AGENT_PROMPT = load_prompt("RiskAgent_prompt.txt")
 STRATEGY_AGENT_PROMPT = load_prompt("StrategyAgent_prompt.txt")

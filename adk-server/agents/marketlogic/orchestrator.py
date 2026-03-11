@@ -110,6 +110,95 @@ def _is_followup_hint(message: str) -> bool:
     )
 
 
+_TERRITORY_ALIASES: dict[str, str] = {
+    # Demonym / adjective forms for known territories
+    "german": "Germany",
+    "british": "United Kingdom",
+    "uk ": "United Kingdom",
+    " uk": "United Kingdom",
+    "american": "United States",
+    "usa": "United States",
+    "u.s.": "United States",
+    "australian": "Australia",
+    "indian": "India",
+    "japanese": "Japan",
+    "chinese": "China",
+    "russian": "Russia",
+    "saudi": "Saudi Arabia",
+    "uae": "Uae Middle East",
+    "emirati": "Uae Middle East",
+    # Territories not yet in registry — passed through so evidence fetch can
+    # fail gracefully rather than confusingly asking for "the target territory"
+    "france": "France",
+    "french": "France",
+    "canada": "Canada",
+    "canadian": "Canada",
+    "brazil": "Brazil",
+    "brazilian": "Brazil",
+    "south korea": "South Korea",
+    "korean": "South Korea",
+    "mexico": "Mexico",
+    "mexican": "Mexico",
+    "italy": "Italy",
+    "italian": "Italy",
+    "spain": "Spain",
+    "spanish": "Spain",
+    "netherlands": "Netherlands",
+    "dutch": "Netherlands",
+    "sweden": "Sweden",
+    "swedish": "Sweden",
+    "norway": "Norway",
+    "norwegian": "Norway",
+    "poland": "Poland",
+    "polish": "Poland",
+    "turkey": "Turkey",
+    "turkish": "Turkey",
+    "indonesia": "Indonesia",
+    "indonesian": "Indonesia",
+    "thailand": "Thailand",
+    "thai": "Thailand",
+    "singapore": "Singapore",
+    "argentina": "Argentina",
+    "nigerian": "Nigeria",
+    "nigeria": "Nigeria",
+    "south africa": "South Africa",
+    "new zealand": "New Zealand",
+    "switzerland": "Switzerland",
+    "swiss": "Switzerland",
+    "belgium": "Belgium",
+    "belgian": "Belgium",
+    "austria": "Austria",
+    "austrian": "Austria",
+    "portugal": "Portugal",
+    "portuguese": "Portugal",
+    "philippines": "Philippines",
+    "filipino": "Philippines",
+    "vietnam": "Vietnam",
+    "vietnamese": "Vietnam",
+    "malaysia": "Malaysia",
+    "malaysian": "Malaysia",
+    "hong kong": "Hong Kong",
+    "taiwan": "Taiwan",
+    "taiwanese": "Taiwan",
+    "egypt": "Egypt",
+    "egyptian": "Egypt",
+    "israel": "Israel",
+    "israeli": "Israel",
+}
+
+
+def _match_territory_alias(message: str) -> str | None:
+    """Check territory alias dict when exact known-territory matching fails."""
+    msg = _normalize(message)
+    best_match: str | None = None
+    best_len = 0
+    for alias, canonical in _TERRITORY_ALIASES.items():
+        if alias in msg and len(alias) > best_len:
+            best_match = canonical
+            best_len = len(alias)
+    return best_match
+
+
 def _is_evidence_request(message: str) -> bool:
     msg = _normalize(message)
     return _contains_any(
@@ -117,10 +206,19 @@ def _is_evidence_request(message: str) -> bool:
         [
             "show sources",
             "show me sources",
+            "show me the sources",
+            "show the sources",
+            "list sources",
+            "what sources",
+            "which sources",
+            "see sources",
+            "show evidence",
             "what documents",
             "which pages",
             "where did you get",
             "show citations",
+            "list citations",
+            "see citations",
         ],
     )
 
@@ -152,14 +250,30 @@ def _resolve_workflow_intent(message: str) -> WorkflowIntent | None:
             "everything",
             "full report",
             "give me everything",
+            "analyze",
+            "evaluate",
+            "assess",
+            "full analysis",
         ],
     ):
         return "full_scorecard"
-    if _contains_any(msg, ["censor", "sensitivity", "risk", "ban", "edit"]):
+    if _contains_any(
+        msg,
+        ["censor", "sensitivity", "risk", "ban", "edit", "safe", "rating",
+         "regulation", "comply", "cut", "flag", "concern"],
+    ):
         return "risk"
-    if _contains_any(msg, ["mg", "minimum guarantee", "price", "valuation", "pay"]):
+    if _contains_any(
+        msg,
+        ["mg", "minimum guarantee", "price", "valuation", "pay", "acquire",
+         "buy", "worth", "revenue", "earnings", "box office"],
+    ):
         return "valuation"
-    if _contains_any(msg, ["release", "window", "marketing", "streaming", "theatrical", "roi"]):
+    if _contains_any(
+        msg,
+        ["release", "window", "marketing", "streaming", "theatrical", "roi",
+         "launch", "platform", "premiere", "schedule", "campaign", "distribution"],
+    ):
         return "strategy"
     return None
 
@@ -185,10 +299,30 @@ def _detect_scenario_override(message: str) -> str | None:
     return None
 
 
+def _build_greeting_response() -> str:
+    return (
+        "Hello! I'm MarketLogic — your film acquisition and distribution intelligence system. "
+        "I can evaluate any film for a specific territory across valuation, censorship risk, "
+        "and release strategy. Try: 'Analyze Deadpool for Saudi Arabia' or "
+        "'What MG should we pay for Interstellar in Japan?'"
+    )
+
+
+def _build_acknowledgement_response() -> str:
+    return "Got it. Let me know if you'd like to go deeper on any part of that, or start a new analysis."
+
+
 def _build_help_response() -> str:
     return (
-        "I can evaluate a film by territory across valuation, risk, and release strategy. "
-        "Share a movie and territory, for example: 'Evaluate Interstellar for India'."
+        "Here is what I can help with:\n"
+        "• Full distribution scorecard — valuation + risk + release strategy in one report\n"
+        "• Valuation / MG pricing — theatrical revenue forecast, acquisition price, comparable films\n"
+        "• Censorship & cultural risk — scene-level flags, regulatory requirements, mitigation advice\n"
+        "• Release strategy — release mode, window, marketing spend, platform priority\n"
+        "• Scenario comparison — e.g. theatrical-first vs streaming-first ROI\n"
+        "• Follow-up questions — drill into any part of a prior result\n"
+        "\nJust name a film and a territory to get started. Example: "
+        "'Give me a full scorecard for La La Land in Japan'."
     )
 
 
@@ -267,6 +401,9 @@ def resolve_orchestrator_input(message: str, session_state: dict[str, Any]) -> O
 
     movie = _match_entity(message, known_movies)
     territory = _match_entity(message, known_territories)
+    # Fallback: demonym/alias matching when exact registry match fails
+    if territory is None:
+        territory = _match_territory_alias(message)
 
     previous_context = session_state.get("resolved_context")
     if isinstance(previous_context, dict):
@@ -279,6 +416,12 @@ def resolve_orchestrator_input(message: str, session_state: dict[str, Any]) -> O
 
     turn_type = _detect_turn_type(message, session_state)
     workflow_intent = _resolve_workflow_intent(message) if turn_type.startswith("workflow_") else None
+    # Inherit previous intent when replying to a clarification (e.g. user types
+    # just "Japan" after being asked for territory — their intent is unchanged)
+    if workflow_intent is None and turn_type.startswith("workflow_") and isinstance(previous_context, dict):
+        inherited = previous_context.get("workflow_intent")
+        if isinstance(inherited, str) and inherited:
+            workflow_intent = inherited  # type: ignore[assignment]
 
     return {
         "message": message,
@@ -294,6 +437,12 @@ def decide_action(orchestrator_input: OrchestratorInput, session_state: dict[str
     turn_type = orchestrator_input["turn_type"]
 
     if turn_type in {"greeting", "acknowledgement", "help"}:
+        if turn_type == "greeting":
+            direct = _build_greeting_response()
+        elif turn_type == "acknowledgement":
+            direct = _build_acknowledgement_response()
+        else:
+            direct = _build_help_response()
         return {
             "action": "respond_directly",
             "turn_type": turn_type,
@@ -303,7 +452,7 @@ def decide_action(orchestrator_input: OrchestratorInput, session_state: dict[str
             "missing_fields": [],
             "required_stages": [],
             "response_type": "conversation_response",
-            "direct_response": _build_help_response(),
+            "direct_response": direct,
         }
 
     if turn_type == "clarification":
@@ -655,7 +804,10 @@ def _evidence_failure_reason(
 
     missing: list[str] = []
     if workflow_intent == "valuation":
-        if not market_signal:
+        # Only hard-block when there is genuinely nothing to work with.
+        # ValuationAgent can benchmark-estimate even without DB market signals;
+        # the scorecard will be marked as degraded_mode in that case.
+        if not market_signal and citation_count < 2:
             missing.append("market_signals")
     elif workflow_intent == "risk":
         if risk_docs == 0 and citation_count < 2:
@@ -687,6 +839,27 @@ async def run_marketlogic_orchestrator(
     orchestrator_input = resolve_orchestrator_input(message=message, session_state=session_state)
     route = decide_action(orchestrator_input, session_state)
 
+    # If a workflow request ended up needing clarification only because the
+    # registry could not be reached, tell the user about the connectivity issue
+    # rather than pretending their film/territory input was missing.
+    if (
+        route["action"] == "ask_clarification"
+        and route["missing_fields"]
+        and route["turn_type"] in {"workflow_request", "workflow_followup"}
+    ):
+        registry = IndexRegistry()
+        if registry.get("_unavailable"):
+            payload = _diagnostic_payload(
+                message=(
+                    "I'm unable to reach the film data index right now. "
+                    "Please ensure the backend service is running and try again."
+                ),
+                reason_code="registry_unavailable",
+                missing_requirements=["data_index_service"],
+                next_action="Ensure the backend service is running and reachable from the ADK server, then retry.",
+            )
+            return payload, {"last_agent_response_type": "clarification_response"}
+
     logger.debug(
         "orchestrator_route action={} turn_type={} movie={} territory={} intent={} scenario={}",
         route["action"],
@@ -706,7 +879,25 @@ async def run_marketlogic_orchestrator(
             payload = json.loads(response_text)
         else:
             payload = _conversation_payload(response_text, route["response_type"])
-        return payload, {"last_agent_response_type": route["response_type"]}
+        state_delta: dict[str, Any] = {"last_agent_response_type": route["response_type"]}
+        partial_movie = orchestrator_input.get("movie")
+        partial_territory = orchestrator_input.get("territory")
+        if partial_movie is not None or partial_territory is not None:
+            existing_ctx = session_state.get("resolved_context") or {}
+            # Persist the workflow_intent so it can be restored on the user's
+            # next reply (e.g. user says "Japan" after being asked for territory)
+            saved_intent = (
+                orchestrator_input.get("workflow_intent")
+                or route.get("workflow_intent")
+                or existing_ctx.get("workflow_intent")
+            )
+            state_delta["resolved_context"] = {
+                "movie": partial_movie or existing_ctx.get("movie"),
+                "territory": partial_territory or existing_ctx.get("territory"),
+                "workflow_intent": saved_intent,
+                "scenario_override": orchestrator_input.get("scenario_override"),
+            }
+        return payload, state_delta
 
     required_stages = set(route["required_stages"])
     workflow_intent = route["workflow_intent"]

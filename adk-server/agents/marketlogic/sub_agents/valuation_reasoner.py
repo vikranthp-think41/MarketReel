@@ -54,11 +54,24 @@ class ValuationReasoner:
         evidence: EvidenceBundle,
         risk_flags: list[RiskFlag],
     ) -> ValuationResult | None:
+        # Trim to only financially relevant data to reduce token usage
+        db = evidence.get("db_evidence", {})
         payload: dict[str, Any] = {
             "movie_id": evidence["movie"],
             "territory": evidence["territory"],
-            "evidence_bundle": evidence,
+            "box_office_history": db.get("box_office", {}),
+            "actor_qscores": db.get("actor_signals", {}),
+            "comparable_films": db.get("comparable_films", []),
+            "exchange_rates": db.get("exchange_rates", {}),
+            "vod_price_benchmarks": db.get("vod_benchmarks", {}),
             "risk_flags": risk_flags,
+            "citation_summary": [
+                {
+                    "doc_id": c.get("doc_id", ""),
+                    "excerpt": c.get("excerpt", "")[:200],
+                }
+                for c in evidence.get("citations", [])[:5]
+            ],
         }
         raw = await run_prompt_json(
             prompt=VALUATION_AGENT_PROMPT,

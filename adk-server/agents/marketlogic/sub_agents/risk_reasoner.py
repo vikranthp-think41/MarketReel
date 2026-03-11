@@ -43,10 +43,24 @@ class RiskReasoner:
 
     @classmethod
     async def _run_prompt_path(cls, *, evidence: EvidenceBundle) -> list[RiskFlag] | None:
+        # Trim to only risk-relevant docs to reduce token usage and improve focus
+        all_docs = evidence.get("document_evidence", {}).get("documents", [])
+        risk_docs = [
+            {
+                "source_path": d.get("source_path", ""),
+                "doc_type": d.get("doc_type", ""),
+                "excerpt": str(d.get("text", ""))[:600],
+            }
+            for d in all_docs
+            if any(
+                kw in str(d.get("source_path", "")).lower()
+                for kw in ("censorship", "cultural_sensitivity")
+            )
+        ]
         input_payload: dict[str, Any] = {
             "movie_id": evidence["movie"],
             "territory": evidence["territory"],
-            "evidence_bundle": evidence,
+            "risk_documents": risk_docs,
         }
         raw = await run_prompt_json(
             prompt=RISK_AGENT_PROMPT,
