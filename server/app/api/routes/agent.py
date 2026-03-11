@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.agent.agent import run_agent
+from app.auth.deps import require_user
+from app.db.models import User
+from app.services.adk_client import run_adk
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -17,6 +19,9 @@ class AgentResponse(BaseModel):
 
 
 @router.post("/run", response_model=AgentResponse)
-async def agent_run(body: AgentRequest) -> AgentResponse:
-    reply = await run_agent(body.message)
-    return AgentResponse(reply=reply)
+async def agent_run(
+    body: AgentRequest,
+    user: User = Depends(require_user),
+) -> AgentResponse:
+    result = await run_adk(body.message, user_id=str(user.id), session_id=None)
+    return AgentResponse(reply=result.reply)
