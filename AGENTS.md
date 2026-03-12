@@ -44,9 +44,13 @@ MarketReel is a MarketLogic AI system for film distribution executives. It evalu
 │   │   └── core/               # ADK server config
 │   ├── docs/                   # Shared documents for all agents
 │   ├── agents/
+│   │   ├── services.py         # Session service URI scheme registry (adk web)
 │   │   ├── marketlogic/        # Runtime MarketLogic agent
-│   │   │   ├── agent.py        # root_agent and run_agent
-│   │   │   └── docs/           # Docs scoped only to MarketLogic agent
+│   │   │   ├── agent.py        # root_agent, sub_agents wiring, and run_agent
+│   │   │   ├── config.py       # Agent model/settings config
+│   │   │   ├── tools.py        # FunctionTools for DB and calculation access
+│   │   │   ├── prompts/        # LLM system prompt files
+│   │   │   └── sub_agents/     # Specialist agents (data, risk, valuation, strategy, explainability)
 │   │   ├── eval/               # Agent eval harness/data
 │   │   └── tests/              # Agent-level tests
 │   └── tests/                  # ADK server API tests
@@ -59,6 +63,7 @@ MarketReel is a MarketLogic AI system for film distribution executives. It evalu
 - ADK runtime entrypoint is `adk-server/app/main.py`.
 - Runtime agent module is `adk-server/agents/marketlogic/agent.py`.
 - Do not reintroduce `adk-server/app/agent.py`.
+- `adk-server/agents/services.py` registers custom DB URI schemes for `adk web --session_service_uri`.
 
 ## Google ADK Python Best Practices
 
@@ -74,6 +79,7 @@ These practices are aligned with the local `google-adk-python` skill references 
 - Store business chat/message history in backend; use ADK session state for agent runtime context/state only.
 - Add callbacks for logging/guardrails/metrics at agent, model, and tool boundaries as complexity grows.
 - Favor workflow agents (sequential/parallel/loop) when tasks are multi-step, instead of overloading one prompt.
+- Use `sub_agents` (not `tools=[AgentTool(...)]`) to register specialist agents on the root agent; this enables ADK graph visualization and agent-transfer routing. Reserve `AgentTool` in `tools` for optional or conditional agent delegation within a sub-agent.
 - Keep shared knowledge in `adk-server/docs/` and agent-specific knowledge in `adk-server/agents/<agent>/docs/`.
 - Add eval coverage for critical behaviors and regression-prone prompts in `adk-server/agents/eval/`.
 - Keep deployment/runtime concerns explicit: health endpoint, structured logs, and reproducible env-driven config.
@@ -117,9 +123,7 @@ uv run pytest tests/test_run.py agents/eval/test_eval.py -q
 ## Document Structure
 
 - Shared/common docs for all agents go in `adk-server/docs/`.
-- Agent-specific docs go in `adk-server/agents/<agent_name>/docs/`.
-- Current runtime agent-specific docs path:
-  - `adk-server/agents/marketlogic/docs/`
+- Agent-specific docs, if needed, go in `adk-server/agents/<agent_name>/docs/`.
 
 ## Service Boundaries
 

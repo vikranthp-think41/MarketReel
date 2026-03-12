@@ -50,11 +50,8 @@ def test_root_agent_name() -> None:
 
 
 def test_root_agent_has_all_sub_agents() -> None:
-    # Agents are wired as AgentTool entries in the tools list, not sub_agents
-    from google.adk.tools.agent_tool import AgentTool
-
-    agent_names = {t.agent.name for t in root_agent.tools if isinstance(t, AgentTool)}
-    assert agent_names == {
+    sub_agent_names = {a.name for a in root_agent.sub_agents}
+    assert sub_agent_names == {
         "DataAgent",
         "RiskAgent",
         "ValuationAgent",
@@ -68,12 +65,10 @@ def test_root_agent_instruction_is_non_empty() -> None:
 
 
 def test_data_agent_has_document_retrieval_sub_agent() -> None:
-    from google.adk.tools.agent_tool import AgentTool
-
     from agents.marketlogic.sub_agents import data_agent as da_module
 
-    agent_tool_names = {t.agent.name for t in da_module.tools if isinstance(t, AgentTool)}
-    assert "DocumentRetrievalAgent" in agent_tool_names
+    sub_agent_names = {a.name for a in da_module.sub_agents}
+    assert "DocumentRetrievalAgent" in sub_agent_names
 
 
 def test_document_retrieval_agent_config() -> None:
