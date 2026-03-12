@@ -260,7 +260,7 @@ def index_navigator(movie: str, territory: str, retrieval_intent: str) -> dict[s
 def targeted_fetcher(
     movie: str,
     territory: str,
-    doc_types: list[str],
+    doc_types: str,
     max_docs: int = 10,
     max_scenes: int = 6,
 ) -> dict[str, Any]:
@@ -274,15 +274,17 @@ def targeted_fetcher(
     Args:
         movie: Film name to retrieve documents for.
         territory: Territory used to filter censorship_guidelines_countries docs.
-        doc_types: Document types to fetch. Valid values: "synopses", "reviews",
-            "marketing", "censorship", "censorship_guidelines_countries",
-            "cultural_sensitivity", "script_scenes".
+        doc_types: Comma-separated document types to fetch. Valid values:
+            "synopses", "reviews", "marketing", "censorship",
+            "censorship_guidelines_countries", "cultural_sensitivity",
+            "script_scenes". Example: "reviews,synopses" or
+            "censorship_guidelines_countries,cultural_sensitivity,script_scenes".
         max_docs: Maximum page-level documents to return (default 10).
         max_scenes: Maximum script scenes to return (default 6).
     """
     movie_slug = _normalize(movie).replace(" ", "_")
     territory_slug = _normalize(territory).replace(" ", "_")
-    type_set = {_normalize(t).replace(" ", "_") for t in (doc_types or [])}
+    type_set = {_normalize(t.strip()).replace(" ", "_") for t in (doc_types or "").split(",") if t.strip()}
 
     documents: list[dict[str, Any]] = []
     scenes: list[dict[str, Any]] = []
@@ -396,39 +398,87 @@ def sufficiency_checker(
 
 
 async def get_box_office_by_genre_territory(movie: str, territory: str) -> dict[str, Any]:
+    """Fetch historical box office performance for a film's genre in a territory.
+
+    Use this tool to get the average and total box office gross for the genre
+    and territory combination relevant to the film being evaluated. Call in
+    parallel with other DB tools.
+
+    Args:
+        movie: Film name used to look up its genre (e.g. "interstellar", "tenet").
+        territory: Distribution territory (e.g. "japan", "germany", "india").
+
+    Returns:
+        A dict with keys: status ("success" or "no_data"), avg_gross_usd (float),
+        total_gross_usd (float), samples (int, number of data points found).
+        When status is "no_data", all numeric fields are 0.0.
+    """
     payload = await _request_json(
         "GET",
         "/internal/v1/market/box-office",
         params={"movie": movie, "territory": territory},
     )
-    if not isinstance(payload, dict):
-        return {"avg_gross_usd": 0.0, "total_gross_usd": 0.0, "samples": 0}
+    if not isinstance(payload, dict) or not payload:
+        return {"status": "no_data", "avg_gross_usd": 0.0, "total_gross_usd": 0.0, "samples": 0}
+    samples = int(payload.get("samples") or 0)
     return {
+        "status": "success" if samples > 0 else "no_data",
         "avg_gross_usd": float(payload.get("avg_gross_usd") or 0.0),
         "total_gross_usd": float(payload.get("total_gross_usd") or 0.0),
-        "samples": int(payload.get("samples") or 0),
+        "samples": samples,
     }
 
 
 async def get_actor_qscore(movie: str) -> dict[str, Any]:
+    """Fetch actor Q-scores and social media reach for a film's key talent.
+
+    Use this tool to get talent signal data for the film. Q-score > 75 applies
+    a +15% talent multiplier to the MG estimate. Call in parallel with other
+    DB tools.
+
+    Args:
+        movie: Film name to look up actor signals for (e.g. "interstellar").
+
+    Returns:
+        A dict with keys: status ("success" or "no_data"), avg_qscore (float,
+        0-100 scale), total_social_reach (int). When status is "no_data",
+        numeric fields are 0.0 — apply no talent adjustment in that case.
+    """
     payload = await _request_json("GET", "/internal/v1/market/actor-signals", params={"movie": movie})
-    if not isinstance(payload, dict):
-        return {"avg_qscore": 0.0, "total_social_reach": 0}
+    if not isinstance(payload, dict) or not payload:
+        return {"status": "no_data", "avg_qscore": 0.0, "total_social_reach": 0}
+    avg_qscore = float(payload.get("avg_qscore") or 0.0)
     return {
-        "avg_qscore": float(payload.get("avg_qscore") or 0.0),
+        "status": "success" if avg_qscore > 0 else "no_data",
+        "avg_qscore": avg_qscore,
         "total_social_reach": int(payload.get("total_social_reach") or 0),
     }
 
 
-async def get_theatrical_window_trends(territory: str) -> list[dict[str, Any]]:
+async def get_theatrical_window_trends(territory: str) -> dict[str, Any]:
+    """Fetch theatrical release window trends for a territory.
+
+    Use this tool to understand how long films typically stay in theatrical
+    release before moving to VOD/streaming in this territory. Informs release
+    strategy and theatrical vs VOD revenue split. Call in parallel with other
+    DB tools.
+
+    Args:
+        territory: Distribution territory (e.g. "japan", "germany", "india").
+
+    Returns:
+        A dict with keys: status ("success" or "no_data"), windows (list of
+        dicts with window_type str and days int), count (int). When status is
+        "no_data", windows is an empty list.
+    """
     payload = await _request_json(
         "GET",
         "/internal/v1/market/theatrical-windows",
         params={"territory": territory},
     )
     if not isinstance(payload, list):
-        return []
-    return [
+        return {"status": "no_data", "windows": [], "count": 0}
+    windows = [
         {
             "window_type": str(item.get("window_type") or ""),
             "days": int(item.get("days") or 0),
@@ -436,46 +486,100 @@ async def get_theatrical_window_trends(territory: str) -> list[dict[str, Any]]:
         for item in payload
         if isinstance(item, dict)
     ]
+    return {
+        "status": "success" if windows else "no_data",
+        "windows": windows,
+        "count": len(windows),
+    }
 
 
 async def get_exchange_rates(territory: str) -> dict[str, Any]:
+    """Fetch the current currency exchange rate for a territory.
+
+    Use this tool to convert MG estimates from USD to the territory's local
+    currency. Call in parallel with other DB tools.
+
+    Args:
+        territory: Distribution territory (e.g. "japan", "germany", "india").
+
+    Returns:
+        A dict with keys: status ("success" or "no_data"), currency_code (str,
+        ISO 4217 e.g. "JPY"), rate_to_usd (float, units of local currency per
+        1 USD), rate_date (str or None). When status is "no_data", rate_to_usd
+        is 1.0 and currency_code is "USD" — report this limitation to the user.
+    """
     payload = await _request_json(
         "GET",
         "/internal/v1/market/exchange-rate",
         params={"territory": territory},
     )
-    if not isinstance(payload, dict):
-        return {"currency_code": "USD", "rate_to_usd": 1.0}
+    if not isinstance(payload, dict) or not payload:
+        return {"status": "no_data", "currency_code": "USD", "rate_to_usd": 1.0, "rate_date": None}
+    rate = float(payload.get("rate_to_usd") or 0.0)
     return {
+        "status": "success" if rate > 0 else "no_data",
         "currency_code": str(payload.get("currency_code") or "USD"),
-        "rate_to_usd": float(payload.get("rate_to_usd") or 1.0),
+        "rate_to_usd": rate if rate > 0 else 1.0,
         "rate_date": payload.get("rate_date"),
     }
 
 
 async def get_vod_price_benchmarks(territory: str) -> dict[str, Any]:
+    """Fetch VOD and streaming licensing price benchmarks for a territory.
+
+    Use this tool to get digital distribution pricing benchmarks for the
+    territory. Used by ValuationAgent to estimate VOD revenue. Call in
+    parallel with other DB tools.
+
+    Args:
+        territory: Distribution territory (e.g. "japan", "germany", "india").
+
+    Returns:
+        A dict with keys: status ("success" or "no_data"), avg_price_min_usd
+        (float), avg_price_max_usd (float). When status is "no_data", both
+        price fields are 0.0 — VOD revenue must be estimated using general
+        percentage-of-total-revenue benchmarks instead.
+    """
     payload = await _request_json(
         "GET",
         "/internal/v1/market/vod-benchmarks",
         params={"territory": territory},
     )
-    if not isinstance(payload, dict):
-        return {"avg_price_min_usd": 0.0, "avg_price_max_usd": 0.0}
+    if not isinstance(payload, dict) or not payload:
+        return {"status": "no_data", "avg_price_min_usd": 0.0, "avg_price_max_usd": 0.0}
+    price_min = float(payload.get("avg_price_min_usd") or 0.0)
+    price_max = float(payload.get("avg_price_max_usd") or 0.0)
     return {
-        "avg_price_min_usd": float(payload.get("avg_price_min_usd") or 0.0),
-        "avg_price_max_usd": float(payload.get("avg_price_max_usd") or 0.0),
+        "status": "success" if price_max > 0 else "no_data",
+        "avg_price_min_usd": price_min,
+        "avg_price_max_usd": price_max,
     }
 
 
-async def get_comparable_films(movie: str, territory: str, limit: int = 5) -> list[dict[str, Any]]:
+async def get_comparable_films(movie: str, territory: str) -> dict[str, Any]:
+    """Fetch comparable films and their box office performance in a territory.
+
+    Use this tool to find films similar in genre and talent tier that have
+    already been released in the target territory. Comparable MGs anchor the
+    valuation estimate. Call in parallel with other DB tools.
+
+    Args:
+        movie: Film name to find comparables for (e.g. "interstellar", "tenet").
+        territory: Distribution territory (e.g. "japan", "germany", "india").
+
+    Returns:
+        A dict with keys: status ("success" or "no_data"), films (list of dicts
+        with title str and territory_gross_usd float), count (int). When status
+        is "no_data" or count < 2, widen the valuation confidence interval.
+    """
     payload = await _request_json(
         "GET",
         "/internal/v1/market/comparables",
-        params={"movie": movie, "territory": territory, "limit": limit},
+        params={"movie": movie, "territory": territory, "limit": 5},
     )
     if not isinstance(payload, list):
-        return []
-    return [
+        return {"status": "no_data", "films": [], "count": 0}
+    films = [
         {
             "title": str(item.get("title") or ""),
             "territory_gross_usd": float(item.get("territory_gross_usd") or 0.0),
@@ -483,6 +587,11 @@ async def get_comparable_films(movie: str, territory: str, limit: int = 5) -> li
         for item in payload
         if isinstance(item, dict)
     ]
+    return {
+        "status": "success" if films else "no_data",
+        "films": films,
+        "count": len(films),
+    }
 
 
 def mg_calculator_tool(
@@ -490,23 +599,66 @@ def mg_calculator_tool(
     avg_qscore: float,
     comparable_avg_gross_usd: float,
     risk_penalty: float,
-    allow_baseline_fallback: bool = True,
-) -> float:
+) -> dict[str, Any]:
+    """Calculate the Minimum Guarantee (MG) mid-point estimate deterministically.
+
+    Use this tool to compute the MG figure after gathering all evidence.
+    Always call this instead of doing arithmetic yourself — it ensures
+    consistent methodology across all valuations.
+
+    Args:
+        avg_box_office_usd: Average box office gross for this genre/territory
+            from get_box_office_by_genre_territory. Use 0.0 if no_data.
+        avg_qscore: Average actor Q-score from get_actor_qscore. Use 0.0 if
+            no_data (no talent adjustment will be applied).
+        comparable_avg_gross_usd: Average gross of comparable films from
+            get_comparable_films. Use 0.0 if no_data (falls back to genre avg).
+        risk_penalty: Risk penalty factor between 0.0 (no risk) and 0.6 (max
+            penalty). Use 0.0 for valuation-only requests with no risk data.
+
+    Returns:
+        A dict with keys: status ("success"), mg_mid_usd (float, the mid-point
+        MG estimate in USD), base_used (float), talent_multiplier (float),
+        risk_penalty_applied (float). Use mg_mid_usd as the basis for
+        low (×0.70) and high (×1.35 or ×1.50 if sparse data) estimates.
+    """
     base = comparable_avg_gross_usd * 0.12 if comparable_avg_gross_usd > 0 else avg_box_office_usd * 0.08
     if base <= 0:
-        if allow_baseline_fallback:
-            base = 1_200_000.0
-        else:
-            base = 0.0
+        base = 1_200_000.0
     talent_multiplier = 1.0 + min(0.25, max(0.0, avg_qscore / 400.0))
     sanitized_penalty = min(0.6, max(0.0, risk_penalty))
     mg = base * talent_multiplier * (1.0 - sanitized_penalty)
-    if mg <= 0:
-        return 0.0
-    return round(max(250_000.0, mg), 2)
+    mg_mid = round(max(250_000.0, mg), 2)
+    return {
+        "status": "success",
+        "mg_mid_usd": mg_mid,
+        "base_used": round(base, 2),
+        "talent_multiplier": round(talent_multiplier, 4),
+        "risk_penalty_applied": round(sanitized_penalty, 4),
+    }
 
 
-def exchange_rate_tool(amount_usd: float, rate_to_usd: float) -> float:
-    if rate_to_usd <= 0:
-        return round(amount_usd, 2)
-    return round(amount_usd / rate_to_usd, 2)
+def exchange_rate_tool(amount_usd: float, rate_to_usd: float) -> dict[str, Any]:
+    """Convert a USD amount to the territory's local currency.
+
+    Use this tool after mg_calculator_tool to express the MG in local currency.
+    Always call this if get_exchange_rates returned status="success".
+
+    Args:
+        amount_usd: Amount in USD to convert (e.g. mg_mid_usd from
+            mg_calculator_tool).
+        rate_to_usd: Exchange rate from get_exchange_rates (units of local
+            currency per 1 USD). If 0.0 or status was no_data, pass 1.0.
+
+    Returns:
+        A dict with keys: status ("success"), amount_local (float, converted
+        amount in local currency), amount_usd (float, original USD amount),
+        rate_used (float).
+    """
+    rate = rate_to_usd if rate_to_usd > 0 else 1.0
+    return {
+        "status": "success",
+        "amount_local": round(amount_usd / rate, 2),
+        "amount_usd": round(amount_usd, 2),
+        "rate_used": rate,
+    }

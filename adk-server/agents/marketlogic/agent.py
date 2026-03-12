@@ -52,13 +52,7 @@ root_agent = Agent(
         "structured acquisition and release strategy recommendations."
     ),
     instruction=_ORCHESTRATOR_PROMPT,
-    tools=[
-        AgentTool(agent=data_agent),
-        AgentTool(agent=risk_agent),
-        AgentTool(agent=valuation_agent),
-        AgentTool(agent=strategy_agent),
-        AgentTool(agent=explainability_agent),
-    ],
+    sub_agents=[data_agent, risk_agent, valuation_agent, strategy_agent, explainability_agent],
 )
 
 _session_service: DatabaseSessionService | None = None

@@ -50,8 +50,11 @@ def test_root_agent_name() -> None:
 
 
 def test_root_agent_has_all_sub_agents() -> None:
-    names = {a.name for a in root_agent.sub_agents}
-    assert names == {
+    # Agents are wired as AgentTool entries in the tools list, not sub_agents
+    from google.adk.tools.agent_tool import AgentTool
+
+    agent_names = {t.agent.name for t in root_agent.tools if isinstance(t, AgentTool)}
+    assert agent_names == {
         "DataAgent",
         "RiskAgent",
         "ValuationAgent",
@@ -65,10 +68,12 @@ def test_root_agent_instruction_is_non_empty() -> None:
 
 
 def test_data_agent_has_document_retrieval_sub_agent() -> None:
-    from agents.marketlogic.sub_agents import data_agent
+    from google.adk.tools.agent_tool import AgentTool
 
-    sub_agent_names = {a.name for a in (data_agent.sub_agents or [])}
-    assert "DocumentRetrievalAgent" in sub_agent_names
+    from agents.marketlogic.sub_agents import data_agent as da_module
+
+    agent_tool_names = {t.agent.name for t in da_module.tools if isinstance(t, AgentTool)}
+    assert "DocumentRetrievalAgent" in agent_tool_names
 
 
 def test_document_retrieval_agent_config() -> None:
@@ -117,8 +122,10 @@ def test_mg_calculator_returns_float() -> None:
         comparable_avg_gross_usd=8_000_000.0,
         risk_penalty=0.1,
     )
-    assert isinstance(result, float)
-    assert result >= 250_000.0  # floor enforced
+    assert isinstance(result, dict)
+    assert result["status"] == "success"
+    assert isinstance(result["mg_mid_usd"], float)
+    assert result["mg_mid_usd"] >= 250_000.0  # floor enforced
 
 
 def test_mg_calculator_baseline_fallback() -> None:
@@ -127,20 +134,23 @@ def test_mg_calculator_baseline_fallback() -> None:
         avg_qscore=0.0,
         comparable_avg_gross_usd=0.0,
         risk_penalty=0.0,
-        allow_baseline_fallback=True,
     )
-    assert result >= 250_000.0
+    assert isinstance(result, dict)
+    assert result["mg_mid_usd"] >= 250_000.0
 
 
 def test_exchange_rate_tool_returns_float() -> None:
     result = exchange_rate_tool(amount_usd=1_000_000.0, rate_to_usd=83.0)
-    assert isinstance(result, float)
-    assert result == pytest.approx(12_048.19, rel=1e-3)
+    assert isinstance(result, dict)
+    assert result["status"] == "success"
+    assert isinstance(result["amount_local"], float)
+    assert result["amount_local"] == pytest.approx(12_048.19, rel=1e-3)
 
 
 def test_exchange_rate_tool_zero_rate_fallback() -> None:
     result = exchange_rate_tool(amount_usd=1_000_000.0, rate_to_usd=0.0)
-    assert result == 1_000_000.0
+    assert isinstance(result, dict)
+    assert result["amount_local"] == pytest.approx(1_000_000.0)
 
 
 def test_index_navigator_schema() -> None:
@@ -167,7 +177,7 @@ def test_targeted_fetcher_returns_expected_schema() -> None:
     result = targeted_fetcher(
         movie="Deadpool",
         territory="India",
-        doc_types=["censorship"],
+        doc_types="censorship",
         max_docs=5,
         max_scenes=0,
     )
@@ -183,7 +193,7 @@ def test_targeted_fetcher_returns_content_for_known_movie() -> None:
     result = targeted_fetcher(
         movie="Deadpool",
         territory="india",
-        doc_types=["censorship"],
+        doc_types="censorship",
         max_docs=10,
         max_scenes=0,
     )
@@ -198,7 +208,7 @@ def test_targeted_fetcher_territory_filter_for_guidelines() -> None:
     result = targeted_fetcher(
         movie="",
         territory="india",
-        doc_types=["censorship_guidelines_countries"],
+        doc_types="censorship_guidelines_countries",
         max_docs=5,
         max_scenes=0,
     )

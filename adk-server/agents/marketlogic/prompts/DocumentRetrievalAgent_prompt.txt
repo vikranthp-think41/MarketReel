@@ -22,7 +22,7 @@ INPUTS YOU WILL RECEIVE
 From DataAgent:
   - retrieval_intent: plain-language description of what evidence is needed (e.g., "censorship risk scenes for Saudi Arabia", "festival reviews for this film", "script themes and narrative hooks")
   - movie_id: the film to retrieve documents for
-  - document_types: list of document types requested (e.g., ["script_scenes", "censorship_guidelines", "reviews"])
+  - document_types: comma-separated document types requested (e.g., "script_scenes,censorship_guidelines,reviews" or "synopses,reviews")
   - territory: target territory (used for censorship_guidelines and cultural_sensitivity lookups)
   - keywords: optional list of themes or keywords to guide scene/chunk selection within documents
 
