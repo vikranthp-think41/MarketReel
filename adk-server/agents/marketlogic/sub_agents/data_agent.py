@@ -4,6 +4,7 @@ from pathlib import Path
 
 from google.adk.agents import Agent
 from google.adk.tools import FunctionTool
+from google.adk.tools.agent_tool import AgentTool
 
 from ..config import config
 from ..tools import (
@@ -29,8 +30,8 @@ data_agent = Agent(
         "about strategy, valuation, or risk."
     ),
     instruction=_PROMPT,
-    sub_agents=[document_retrieval_agent],
     tools=[
+        AgentTool(agent=document_retrieval_agent),
         FunctionTool(get_box_office_by_genre_territory),
         FunctionTool(get_actor_qscore),
         FunctionTool(get_theatrical_window_trends),

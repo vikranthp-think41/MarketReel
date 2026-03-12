@@ -10,6 +10,7 @@ from pathlib import Path
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
+from google.adk.tools.agent_tool import AgentTool
 from google.genai import types as genai_types
 from loguru import logger
 
@@ -51,12 +52,12 @@ root_agent = Agent(
         "structured acquisition and release strategy recommendations."
     ),
     instruction=_ORCHESTRATOR_PROMPT,
-    sub_agents=[
-        data_agent,
-        risk_agent,
-        valuation_agent,
-        strategy_agent,
-        explainability_agent,
+    tools=[
+        AgentTool(agent=data_agent),
+        AgentTool(agent=risk_agent),
+        AgentTool(agent=valuation_agent),
+        AgentTool(agent=strategy_agent),
+        AgentTool(agent=explainability_agent),
     ],
 )
 
@@ -127,8 +128,39 @@ async def run_agent(
             session_id=session.id,
             new_message=_user_content(message),
         ):
-            if event.is_final_response() and event.content:
-                final_text = _content_text(event.content)
+            author = getattr(event, "author", None)
+            has_content = bool(event.content and event.content.parts)
+            part_types = (
+                [
+                    "text" if getattr(p, "text", None) else
+                    "function_call" if getattr(p, "function_call", None) else
+                    "function_response" if getattr(p, "function_response", None) else
+                    "other"
+                    for p in event.content.parts
+                ]
+                if has_content else []
+            )
+            is_final = event.is_final_response()
+            logger.debug(
+                "adk_event author={} is_final={} part_types={} session_id={}",
+                author, is_final, part_types, session.id,
+            )
+
+            if is_final and event.content:
+                text = _content_text(event.content)
+                if text:
+                    final_text = text
+                else:
+                    logger.warning(
+                        "adk_final_event_no_text author={} part_types={} session_id={}",
+                        author, part_types, session.id,
+                    )
+            elif has_content and author == root_agent.name:
+                # Fallback: capture last text from root agent even if
+                # is_final_response() never fires with text content
+                text = _content_text(event.content)
+                if text:
+                    final_text = text
     except Exception:
         logger.exception(
             "agent_workflow_failed user_id={} session_id={}", user_id, session.id

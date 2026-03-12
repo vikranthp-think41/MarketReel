@@ -34,11 +34,11 @@ Use the following mapping to know which index to consult for each document type:
 
   script_scenes         → docs/scripts_indexed/scenes.jsonl  (indexed by: movie_id → act → scene_id → page)
   script_pages          → docs/scripts_indexed/pages.jsonl   (indexed by: movie_id → page_number)
-  synopsis              → docs/page_index/pages.jsonl        (filter: document_type=synopsis, movie_id={movie_id})
-  reviews               → docs/page_index/pages.jsonl        (filter: document_type=reviews, movie_id={movie_id})
-  marketing             → docs/page_index/pages.jsonl        (filter: document_type=marketing, movie_id={movie_id})
-  cultural_sensitivity  → docs/page_index/pages.jsonl        (filter: document_type=cultural_sensitivity, movie_id={movie_id})
-  censorship_guidelines → docs/page_index/pages.jsonl        (filter: document_type=censorship_guidelines, territory={territory})
+  synopsis              → docs/page_index/pages.jsonl        (filter: document_type=synopsis, movie_id={movie_id?})
+  reviews               → docs/page_index/pages.jsonl        (filter: document_type=reviews, movie_id={movie_id?})
+  marketing             → docs/page_index/pages.jsonl        (filter: document_type=marketing, movie_id={movie_id?})
+  cultural_sensitivity  → docs/page_index/pages.jsonl        (filter: document_type=cultural_sensitivity, movie_id={movie_id?})
+  censorship_guidelines → docs/page_index/pages.jsonl        (filter: document_type=censorship_guidelines, territory={territory?})
   broad_search          → docs/page_index/manifest.json      (use only when document_type is unspecified)
 
 ---
@@ -88,9 +88,9 @@ OUTPUT FORMAT
 Return a structured retrieval result with these fields:
 
   {
-    "movie_id": "{movie_id}",
-    "territory": "{territory}",
-    "retrieval_intent": "{retrieval_intent}",
+    "movie_id": "{movie_id?}",
+    "territory": "{territory?}",
+    "retrieval_intent": "{retrieval_intent?}",
     "retrieved_items": [
       {
         "document_type": string,

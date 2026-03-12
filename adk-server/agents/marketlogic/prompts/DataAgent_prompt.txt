@@ -24,36 +24,36 @@ You will receive one of the following request types. Each has a defined set of r
 
 REQUEST TYPE: valuation_evidence
   Documents to retrieve (via DocumentRetrievalAgent):
-    - synopsis for {movie_id}
-    - script themes and narrative hooks for {movie_id} (from scripts_indexed/scenes.jsonl)
-    - marketing brief for {movie_id}
-    - reviews for {movie_id} (for sentiment signal)
+    - synopsis for {movie_id?}
+    - script themes and narrative hooks for {movie_id?} (from scripts_indexed/scenes.jsonl)
+    - marketing brief for {movie_id?}
+    - reviews for {movie_id?} (for sentiment signal)
   DB tools to call:
-    - get_box_office_by_genre_territory(genre={genre}, territory={territory})
-    - get_actor_qscore(movie_id={movie_id})
-    - get_exchange_rates(territory={territory})
-    - get_vod_price_benchmarks(genre={genre}, territory={territory})
-    - get_comparable_films(genre={genre}, territory={territory})
+    - get_box_office_by_genre_territory(genre={genre?}, territory={territory?})
+    - get_actor_qscore(movie_id={movie_id?})
+    - get_exchange_rates(territory={territory?})
+    - get_vod_price_benchmarks(genre={genre?}, territory={territory?})
+    - get_comparable_films(genre={genre?}, territory={territory?})
   Call all DB tools in parallel.
 
 REQUEST TYPE: risk_evidence
   Documents to retrieve (via DocumentRetrievalAgent):
-    - script scenes for {movie_id} — full scene list with page references
-    - censorship_guidelines for {territory}
-    - cultural_sensitivity for {movie_id}
+    - script scenes for {movie_id?} — full scene list with page references
+    - censorship_guidelines for {territory?}
+    - cultural_sensitivity for {movie_id?}
   DB tools to call:
-    - get_theatrical_window_trends(territory={territory}) — for market risk context only
+    - get_theatrical_window_trends(territory={territory?}) — for market risk context only
   No financial DB tools needed for risk-only requests.
 
 REQUEST TYPE: strategy_evidence
   Documents to retrieve (via DocumentRetrievalAgent):
-    - reviews for {movie_id}
-    - marketing brief for {movie_id}
-    - synopsis for {movie_id}
+    - reviews for {movie_id?}
+    - marketing brief for {movie_id?}
+    - synopsis for {movie_id?}
   DB tools to call:
-    - get_theatrical_window_trends(territory={territory})
-    - get_vod_price_benchmarks(genre={genre}, territory={territory})
-    - get_actor_qscore(movie_id={movie_id})
+    - get_theatrical_window_trends(territory={territory?})
+    - get_vod_price_benchmarks(genre={genre?}, territory={territory?})
+    - get_actor_qscore(movie_id={movie_id?})
   Note: ValuationAgent and RiskAgent outputs are passed to StrategyAgent via session state, not through DataAgent.
 
 REQUEST TYPE: full_evidence
@@ -73,11 +73,13 @@ After retrieval, compute data_sufficiency_score as a float between 0.0 and 1.0.
 Use the following rules:
 
 - Start at 1.0.
-- Subtract 0.2 for each required document type that is completely missing from the corpus.
-- Subtract 0.1 for each required document type that exists but returned fewer than 2 chunks/pages of usable content.
-- Subtract 0.15 for each required DB table that returned zero rows.
-- Subtract 0.1 for each required DB table that returned fewer than 3 comparable data points.
+- Subtract 0.2 for each required document type that is completely missing from the corpus (no documents found at all).
+- Subtract 0.05 for each required document type that exists but has very thin content (single-page or fragment with fewer than 100 words of substantive text).
+- Subtract 0.1 for each required DB table that returned zero rows.
+- Do NOT deduct for a DB table that returned only 1 data point — 1 real result is useful and counts as partial coverage.
 - Floor the score at 0.0. Never go negative.
+
+IMPORTANT: A single-page document with substantial content (300+ words) counts as sufficient for that document type. Do NOT penalize for "fewer than 2 chunks" if the document's single page contains meaningful content.
 
 Always report the score. Never suppress it. Always include a brief note identifying which specific items caused deductions, so the Orchestrator can relay this to the user if needed.
 
@@ -103,9 +105,9 @@ OUTPUT FORMAT
 Return a structured evidence package with these fields:
 
   {
-    "movie_id": "{movie_id}",
-    "territory": "{territory}",
-    "request_type": "{request_type}",
+    "movie_id": "{movie_id?}",
+    "territory": "{territory?}",
+    "request_type": "{request_type?}",
     "documents": [ list of retrieved document chunks with citations ],
     "db_results": { map of DB tool name → results },
     "citations": [ list of all citation objects ],

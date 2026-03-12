@@ -88,8 +88,8 @@ Prefer flagging with reduced confidence over silently omitting a real risk.
 OUTPUT FORMAT
 
   {
-    "movie_id": "{movie_id}",
-    "territory": "{territory}",
+    "movie_id": "{movie_id?}",
+    "territory": "{territory?}",
     "risk_flags": [ RiskFlag[] ],
     "summary": {
       "total_flags": number,

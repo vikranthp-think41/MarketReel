@@ -45,10 +45,14 @@ Step 1 — Comparable film anchoring:
   Similarity is determined by: genre match, territory match, release year recency, talent tier overlap.
   Weight more recent comparables more heavily.
   The comparable MGs set your initial range.
-  IF comparable_films is empty or has fewer than 2 entries:
+  IF comparable_films has exactly 1 entry:
+    - Use that single film as your anchor. It is a real data point and must not be ignored.
+    - Note in uncertainty_factors that only 1 comparable was available and widen the confidence interval (Step 5).
+    - Set confidence ≤ 0.55.
+  IF comparable_films is empty:
     - Use genre-level box_office_history averages as your anchor instead.
     - If box_office_history is also empty, use a conservative benchmark of $500K–$2M for mid-budget films, $100K–$500K for low-budget films, adjusted by vod_price_benchmarks.
-    - Set confidence ≤ 0.40 and explicitly note the absence of comparable film data in uncertainty_factors.
+    - Set confidence ≤ 0.40 and explicitly note NO comparable film data was available in uncertainty_factors.
     - Do NOT refuse to produce an estimate. Always return numbers, even under uncertainty.
 
 Step 2 — Talent adjustment:
@@ -106,8 +110,8 @@ OUTPUT FORMAT
 Return a structured valuation output with these fields:
 
   {
-    "movie_id": "{movie_id}",
-    "territory": "{territory}",
+    "movie_id": "{movie_id?}",
+    "territory": "{territory?}",
     "mg_estimate": {
       "low": number,
       "mid": number,

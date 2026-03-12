@@ -119,8 +119,8 @@ P&A cost for VOD-only scenarios: use 30% of the theatrical P&A estimate (no prin
 OUTPUT FORMAT
 
   {
-    "movie_id": "{movie_id}",
-    "territory": "{territory}",
+    "movie_id": "{movie_id?}",
+    "territory": "{territory?}",
     "release_recommendation": {
       "mode": "THEATRICAL" | "STREAMING_FIRST" | "DAY_AND_DATE" | "VOD_ONLY",
       "rationale": string (2–4 sentence plain-language explanation),
