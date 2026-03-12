@@ -1,13 +1,15 @@
-from .data_agent import DataAgent
-from .document_retrieval_agent import DocumentRetrievalAgent
-from .risk_agent import RiskAgent
-from .strategy_agent import StrategyAgent
-from .valuation_agent import ValuationAgent
+from .data_agent import data_agent
+from .document_retrieval_agent import document_retrieval_agent
+from .explainability_agent import explainability_agent
+from .risk_agent import risk_agent
+from .strategy_agent import strategy_agent
+from .valuation_agent import valuation_agent
 
 __all__ = [
-    "DataAgent",
-    "DocumentRetrievalAgent",
-    "ValuationAgent",
-    "RiskAgent",
-    "StrategyAgent",
+    "data_agent",
+    "document_retrieval_agent",
+    "explainability_agent",
+    "risk_agent",
+    "strategy_agent",
+    "valuation_agent",
 ]
