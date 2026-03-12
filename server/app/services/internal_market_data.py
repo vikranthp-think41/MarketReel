@@ -146,14 +146,18 @@ def targeted_fetch(plan: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
         if doc_type and wanted_types and doc_type not in wanted_types:
             continue
         if movie and not _movie_match(item, movie):
-            if doc_type == "censorship_guidelines_countries" and territory and _territory_match(
-                item, territory
+            if (
+                doc_type == "censorship_guidelines_countries"
+                and territory
+                and _territory_match(item, territory)
             ):
                 pass
             else:
                 continue
-        if doc_type == "censorship_guidelines_countries" and territory and not _territory_match(
-            item, territory
+        if (
+            doc_type == "censorship_guidelines_countries"
+            and territory
+            and not _territory_match(item, territory)
         ):
             continue
         docs.append(item)
@@ -291,9 +295,7 @@ async def get_exchange_rates(db: AsyncSession, territory: str) -> dict[str, Any]
         return {"currency_code": "USD", "rate_to_usd": 1.0, "rate_date": None}
     row = rows[0]
     rate_date = row.get("rate_date")
-    rate_date_value = (
-        rate_date.isoformat() if isinstance(rate_date, (date, datetime)) else None
-    )
+    rate_date_value = rate_date.isoformat() if isinstance(rate_date, (date, datetime)) else None
     return {
         "currency_code": str(row.get("currency_code") or "USD"),
         "rate_to_usd": float(row.get("rate_to_usd") or 1.0),

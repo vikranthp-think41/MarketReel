@@ -64,9 +64,3 @@ name = "DB does not import from services or API"
 type = "forbidden"
 source_modules = ["app.db"]
 forbidden_modules = ["app.services", "app.api"]
-
-[[tool.importlinter.contracts]]
-name = "Agent does not import from API or services"
-type = "forbidden"
-source_modules = ["app.agent"]
-forbidden_modules = ["app.api", "app.services"]

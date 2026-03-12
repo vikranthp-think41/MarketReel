@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Select, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -19,7 +19,7 @@ async def create_chat(db: AsyncSession, user_id: int, title: str) -> Chat:
 
 
 async def list_chats(db: AsyncSession, user_id: int) -> list[Chat]:
-    stmt: Select = select(Chat).where(Chat.user_id == user_id).order_by(Chat.updated_at.desc())
+    stmt = select(Chat).where(Chat.user_id == user_id).order_by(Chat.updated_at.desc())
     result = await db.execute(stmt)
     return list(result.scalars().all())
 

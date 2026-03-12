@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
+from pytest import MonkeyPatch
 
 from app.services import adk_client
 
@@ -10,13 +11,17 @@ class _FakeAdk:
     def __init__(self) -> None:
         self.calls = 0
 
-    async def __call__(self, message: str, user_id: str, session_id: str | None):
+    async def __call__(
+        self, message: str, user_id: str, session_id: str | None
+    ) -> adk_client.AdkRunResult:
         self.calls += 1
         return adk_client.AdkRunResult(reply=f"Echo: {message}", session_id=session_id or "sess-1")
 
 
 @pytest.mark.asyncio
-async def test_chat_flow(client: AsyncClient, auth_headers: dict[str, str], monkeypatch):
+async def test_chat_flow(
+    client: AsyncClient, auth_headers: dict[str, str], monkeypatch: MonkeyPatch
+) -> None:
     fake = _FakeAdk()
     monkeypatch.setattr("app.services.chats.run_adk", fake)
 
@@ -45,6 +50,6 @@ async def test_chat_flow(client: AsyncClient, auth_headers: dict[str, str], monk
 
 
 @pytest.mark.asyncio
-async def test_chat_requires_auth(client: AsyncClient):
+async def test_chat_requires_auth(client: AsyncClient) -> None:
     response = await client.get("/api/v1/chats")
     assert response.status_code == 401

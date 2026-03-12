@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TypedDict
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +13,11 @@ from app.db.models import User
 SEED_FILE = Path(__file__).with_name("seed_users.json")
 
 
-type SeedUser = dict[str, str | None]
+class SeedUser(TypedDict):
+    username: str
+    email: str
+    password: str
+    full_name: str | None
 
 
 async def seed_users(db: AsyncSession) -> int:

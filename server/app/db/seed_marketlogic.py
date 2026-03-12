@@ -320,12 +320,12 @@ async def seed_marketlogic(db: AsyncSession) -> dict[str, int]:
 
     genre_names: set[str] = set()
     film_rows: list[dict[str, Any]] = []
-    for film in films_seed:
-        title = _canonical_title(str(film.get("title") or "").strip())
+    for film_seed_row in films_seed:
+        title = _canonical_title(str(film_seed_row.get("title") or "").strip())
         if not title:
             continue
-        main_genre = str(film.get("genre") or "Unknown").strip() or "Unknown"
-        subgenre = str(film.get("subgenre") or "").strip()
+        main_genre = str(film_seed_row.get("genre") or "Unknown").strip() or "Unknown"
+        subgenre = str(film_seed_row.get("subgenre") or "").strip()
         if main_genre:
             genre_names.add(main_genre)
         if subgenre:
@@ -334,9 +334,9 @@ async def seed_marketlogic(db: AsyncSession) -> dict[str, int]:
         film_rows.append(
             {
                 "title": title,
-                "release_year": _as_int(film.get("year"), 2000),
-                "runtime_min": _as_int(film.get("runtime_minutes"), 100),
-                "budget_usd": _as_float(film.get("production_budget_usd"), 0.0),
+                "release_year": _as_int(film_seed_row.get("year"), 2000),
+                "runtime_min": _as_int(film_seed_row.get("runtime_minutes"), 100),
+                "budget_usd": _as_float(film_seed_row.get("production_budget_usd"), 0.0),
                 "logline": (
                     f"{title} ({main_genre}/{subgenre or 'General'}) "
                     "market profile for global strategy."
@@ -350,17 +350,17 @@ async def seed_marketlogic(db: AsyncSession) -> dict[str, int]:
 
     genre_by_name: dict[str, models.Genre] = {}
     for name in sorted(genre_names):
-        genre = models.Genre(name=name)
-        db.add(genre)
-        genre_by_name[name] = genre
+        genre_model = models.Genre(name=name)
+        db.add(genre_model)
+        genre_by_name[name] = genre_model
     counts["genres_created"] = len(genre_by_name)
 
     territory_code_by_name: dict[str, str] = {}
     for row in box_office_seed:
-        territory = _canonical_territory(str(row.get("territory") or "").strip())
+        territory_name = _canonical_territory(str(row.get("territory") or "").strip())
         code = str(row.get("territory_code") or "").strip().upper()
-        if territory and code and territory in ALLOWED_TERRITORIES:
-            territory_code_by_name[territory] = code
+        if territory_name and code and territory_name in ALLOWED_TERRITORIES:
+            territory_code_by_name[territory_name] = code
     for row in (
         windows_seed
         + festival_seed
@@ -370,40 +370,40 @@ async def seed_marketlogic(db: AsyncSession) -> dict[str, int]:
         + risk_seed
         + stream_seed
     ):
-        territory = _canonical_territory(str(row.get("territory") or "").strip())
+        territory_name = _canonical_territory(str(row.get("territory") or "").strip())
         code = str(row.get("territory_code") or "").strip().upper()
         if (
-            territory
+            territory_name
             and code
-            and territory in ALLOWED_TERRITORIES
-            and territory not in territory_code_by_name
+            and territory_name in ALLOWED_TERRITORIES
+            and territory_name not in territory_code_by_name
         ):
-            territory_code_by_name[territory] = code
+            territory_code_by_name[territory_name] = code
 
     currency_by_territory: dict[str, str] = {}
     for row in fx_seed:
-        territory = _canonical_territory(str(row.get("territory") or "").strip())
+        territory_name = _canonical_territory(str(row.get("territory") or "").strip())
         currency = str(row.get("currency_code") or "USD").strip().upper()
-        if territory in ALLOWED_TERRITORIES:
-            currency_by_territory[territory] = currency
+        if territory_name in ALLOWED_TERRITORIES:
+            currency_by_territory[territory_name] = currency
 
     all_territories = set(ALLOWED_TERRITORIES)
 
     territory_by_name: dict[str, models.Territory] = {}
     for territory_name in sorted(all_territories):
         code = territory_code_by_name.get(territory_name, "GL")
-        territory = models.Territory(
+        territory_model = models.Territory(
             name=territory_name,
             region_code=_region_for_code(code),
             currency_code=currency_by_territory.get(territory_name, "USD"),
         )
-        db.add(territory)
-        territory_by_name[territory_name] = territory
+        db.add(territory_model)
+        territory_by_name[territory_name] = territory_model
     counts["territories_created"] = len(territory_by_name)
 
     film_by_seed_id: dict[int, models.Film] = {}
     for idx, row in enumerate(film_rows, start=1):
-        film = models.Film(
+        film_model = models.Film(
             title=row["title"],
             release_year=row["release_year"],
             runtime_min=row["runtime_min"],
@@ -412,8 +412,8 @@ async def seed_marketlogic(db: AsyncSession) -> dict[str, int]:
             synopsis_doc_path=row["synopsis_doc_path"],
             script_doc_path=row["script_doc_path"],
         )
-        db.add(film)
-        film_by_seed_id[idx] = film
+        db.add(film_model)
+        film_by_seed_id[idx] = film_model
     counts["films_created"] = len(film_by_seed_id)
 
     actor_by_seed_id: dict[int, models.Actor] = {}
@@ -427,27 +427,27 @@ async def seed_marketlogic(db: AsyncSession) -> dict[str, int]:
             + _as_float(row.get("tiktok_followers_m"))
             + _as_float(row.get("youtube_subscribers_m"))
         )
-        actor = models.Actor(
+        actor_model = models.Actor(
             name=str(row.get("name") or "Unknown Actor").strip(),
             q_score=q_score,
             social_reach=int(social_m * 1_000_000),
         )
-        db.add(actor)
-        actor_by_seed_id[idx] = actor
+        db.add(actor_model)
+        actor_by_seed_id[idx] = actor_model
     counts["actors_created"] = len(actor_by_seed_id)
 
     await db.flush()
 
     film_genres_created = 0
     for idx, row in enumerate(film_rows, start=1):
-        film = film_by_seed_id[idx]
+        film_model = film_by_seed_id[idx]
         primary = row["main_genre"]
         secondary = row["subgenre"]
         if primary in genre_by_name:
-            db.add(models.FilmGenre(film_id=film.id, genre_id=genre_by_name[primary].id))
+            db.add(models.FilmGenre(film_id=film_model.id, genre_id=genre_by_name[primary].id))
             film_genres_created += 1
         if secondary and secondary in genre_by_name and secondary != primary:
-            db.add(models.FilmGenre(film_id=film.id, genre_id=genre_by_name[secondary].id))
+            db.add(models.FilmGenre(film_id=film_model.id, genre_id=genre_by_name[secondary].id))
             film_genres_created += 1
     counts["film_genres_created"] = film_genres_created
 
@@ -554,17 +554,12 @@ async def seed_marketlogic(db: AsyncSession) -> dict[str, int]:
 
     vod_groups: dict[tuple[str, str, int], list[float]] = defaultdict(list)
     for row in vod_seed:
-        territory = _canonical_territory(str(row.get("territory") or "").strip())
+        territory_name = _canonical_territory(str(row.get("territory") or "").strip())
         license_type = str(row.get("deal_type") or "").strip()
         window_months = _as_int(row.get("license_term_months"), 0)
         fee = _as_float(row.get("license_fee_usd"), 0.0)
-        if (
-            territory in ALLOWED_TERRITORIES
-            and license_type
-            and window_months > 0
-            and fee > 0
-        ):
-            vod_groups[(territory, license_type, window_months)].append(fee)
+        if territory_name in ALLOWED_TERRITORIES and license_type and window_months > 0 and fee > 0:
+            vod_groups[(territory_name, license_type, window_months)].append(fee)
 
     vod_created = 0
     for (territory_name, license_type, window_months), fees in vod_groups.items():
@@ -678,11 +673,7 @@ async def seed_marketlogic(db: AsyncSession) -> dict[str, int]:
         film = film_by_seed_id.get(_as_int(row.get("film_id")))
         territory_name = _canonical_territory(str(row.get("territory") or ""))
         deal_date = _as_date(row.get("deal_date"))
-        if (
-            film is None
-            or deal_date is None
-            or territory_name not in ALLOWED_TERRITORIES
-        ):
+        if film is None or deal_date is None or territory_name not in ALLOWED_TERRITORIES:
             continue
         db.add(
             models.AcquisitionDeal(
@@ -771,9 +762,7 @@ async def seed_marketlogic(db: AsyncSession) -> dict[str, int]:
     if actual_territories != ALLOWED_TERRITORIES:
         missing = sorted(ALLOWED_TERRITORIES - actual_territories)
         extra = sorted(actual_territories - ALLOWED_TERRITORIES)
-        raise ValueError(
-            f"Territory validation failed. Missing={missing}, unexpected={extra}"
-        )
+        raise ValueError(f"Territory validation failed. Missing={missing}, unexpected={extra}")
 
     await db.commit()
     return counts
